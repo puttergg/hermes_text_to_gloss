@@ -3,9 +3,7 @@ import time
 from pathlib import Path
 
 import pandas as pd
-from google import genai
-from google.genai import types
-
+from openai import OpenAI
 
 # =========================
 # PATH SETUP
@@ -13,12 +11,11 @@ from google.genai import types
 
 BASE_DIR = Path(r"D:\SIIT_Y1\ฝึกงาน summer")
 
-INPUT_FILE = BASE_DIR / "clean_no_conflict.csv"
+INPUT_FILE = BASE_DIR / "clean_no_conflictv2.csv"
 FEWSHOT_CSV = BASE_DIR / "fewshot_20.csv"
 
-# Use test files first so you do not mix old Gemini/OpenAI/bad-key results
-OUTPUT_FILE = BASE_DIR / "gemini_result_test.csv"
-FAILED_FILE = BASE_DIR / "gemini_failed_rows_test.csv"
+OUTPUT_FILE = BASE_DIR / "groq_result_30rows.csv"
+FAILED_FILE = BASE_DIR / "groq_failed_rows_30rows.csv"
 
 
 # =========================
@@ -27,7 +24,16 @@ FAILED_FILE = BASE_DIR / "gemini_failed_rows_test.csv"
 
 # Set this in PowerShell before running:
 # $env:GEMINI_API_KEY="YOUR_REAL_KEY"
-client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+
+api_key = os.environ.get("GROQ_API_KEY")
+
+if not api_key:
+    raise ValueError("GROQ_API_KEY is not set. Set it in PowerShell first.")
+
+client = OpenAI(
+    api_key=api_key,
+    base_url="https://api.groq.com/openai/v1",
+)
 
 
 # =========================
@@ -42,8 +48,8 @@ REF_COL = "gloss_reference"
 # TEST LIMITS
 # =========================
 
-MAX_TEST_ROWS = 5       # stop after 5 successful outputs
-MAX_ATTEMPTS = 10       # stop after 10 attempted rows even if all fail
+MAX_TEST_ROWS = 30
+MAX_ATTEMPTS = 35
 
 
 # =========================
@@ -130,11 +136,24 @@ fewshot_examples = load_fewshot_examples(limit=3)
 
 
 def call_hermes(sentence: str, max_retries=5) -> str:
-    prompt = f"""
+    full_prompt = f"""
+{SYSTEM_PROMPT}
+
 Few-shot examples:
 {fewshot_examples}
 
-Now convert this Thai weather forecast sentence into Thai Sign Language gloss.
+Task:
+Convert the following Thai weather forecast sentence into Thai Sign Language gloss.
+
+STRICT OUTPUT RULES:
+- Output only gloss tokens.
+- Use | as separator.
+- Do not use Thai connector words such as กับ, และ, โดย, ของพื้นที่.
+- Do not summarize.
+- Do not stop early.
+- Convert number ranges like 25-27 into 25|ถึง|27.
+- Convert กม./ชม. into กิโลเมตร|ชั่วโมง.
+- The output must include all weather components from the input.
 
 Input:
 {sentence}
@@ -144,36 +163,33 @@ Output:
 
     for attempt in range(max_retries):
         try:
-            response = client.models.generate_content(
-                model="gemini-2.5-flash",
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    system_instruction=SYSTEM_PROMPT,
-                    temperature=0,
-                    max_output_tokens=1200,
-                ),
+            response = client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": full_prompt},
+                ],
+                temperature=0,
+                 max_tokens=1200,
             )
 
-            return clean_hermes_output(response.text)
+            return clean_hermes_output(response.choices[0].message.content)
 
         except Exception as e:
             error_text = str(e)
             print("ERROR:", error_text)
 
-            if "API_KEY_INVALID" in error_text or "API key not valid" in error_text:
+            if "api key" in error_text.lower() or "401" in error_text:
                 return "__INVALID_API_KEY__"
 
-            if "GenerateRequestsPerDay" in error_text:
-                return "__DAILY_QUOTA__"
-
-            if "429" in error_text or "RESOURCE_EXHAUSTED" in error_text:
-                wait_time = 75
-                print(f"Quota limit hit. Waiting {wait_time} seconds before retry...")
+            if "429" in error_text or "quota" in error_text.lower() or "rate limit" in error_text.lower():
+                wait_time = 45
+                print(f"Groq quota/rate limit hit. Waiting {wait_time} seconds before retry...")
                 time.sleep(wait_time)
                 continue
 
-            if "503" in error_text or "UNAVAILABLE" in error_text:
-                wait_time = 45
+            if "503" in error_text or "unavailable" in error_text.lower():
+                wait_time = 30
                 print(f"Model busy. Waiting {wait_time} seconds before retry...")
                 time.sleep(wait_time)
                 continue
@@ -181,8 +197,6 @@ Output:
             return "__REQUEST_ERROR__"
 
     return "__REQUEST_ERROR__"
-
-
 def is_incomplete_output(output: str, thai_sentence: str) -> bool:
     output = str(output).strip()
 
@@ -290,12 +304,12 @@ def main():
 
         # 1. Stop immediately if API key is invalid
         if hermes_output == "__INVALID_API_KEY__":
-            print("STOP: Invalid Gemini API key. Fix the API key before running again.")
+            print("STOP: Invalid Groq API key. Fix the API key before running again.")
             break
 
         # 2. Stop immediately if daily quota is reached
         if hermes_output == "__DAILY_QUOTA__":
-            print("STOP: Gemini daily quota reached. Try again tomorrow or change model.")
+            print("STOP:  Groq daily quota reached. Try again tomorrow or change model.")
             break
 
         # 3. Handle API/request failure
