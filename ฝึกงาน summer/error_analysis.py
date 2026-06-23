@@ -8,7 +8,7 @@ BASE_DIR = Path(r"D:\SIIT_Y1\ฝึกงาน summer")
 CLEANED_FILE = BASE_DIR / "cleaned_weather_tsl.csv"
 CONFLICT_FILE = BASE_DIR / "manual_review_conflicts.csv"
 
-# This file must be created AFTER you run Hermes
+
 HERMES_FILE = BASE_DIR / "hermes_result.csv"
 
 OUTPUT_CLEAN_NO_CONFLICT = BASE_DIR / "D:\SIIT_Y1\ฝึกงาน summer\clean_no_conflict.csv"
