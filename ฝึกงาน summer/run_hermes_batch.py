@@ -18,13 +18,6 @@ OUTPUT_FILE = BASE_DIR / "groq_result_30rows.csv"
 FAILED_FILE = BASE_DIR / "groq_failed_rows_30rows.csv"
 
 
-# =========================
-# GEMINI CONFIG
-# =========================
-
-# Set this in PowerShell before running:
-# $env:GEMINI_API_KEY="YOUR_REAL_KEY"
-
 api_key = os.environ.get("GROQ_API_KEY")
 
 if not api_key:
