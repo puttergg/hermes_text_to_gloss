@@ -33,12 +33,17 @@ def postprocess_model_output(text: str) -> str:
 
     text = str(text).strip()
 
-    # 1. Bangkok normalization
-    text = text.replace("กรุงเทพฯ|พื้นที่|ใกล้เคียง", "กรุงเทพ|จังหวัด|ใกล้เคียง")
-    text = text.replace("กรุงเทพมหานคร|พื้นที่|ใกล้เคียง", "กรุงเทพ|จังหวัด|ใกล้เคียง")
-    text = text.replace("กรุงเทพฯ|จังหวัด|ใกล้เคียง", "กรุงเทพ|จังหวัด|ใกล้เคียง")
-    text = text.replace("กรุงเทพ|พื้นที่|ใกล้เคียง", "กรุงเทพ|จังหวัด|ใกล้เคียง")
+   
+    # 1. Bangkok normalization based on reference style
+    if "กรุงเทพ|จังหวัด|ใกล้เคียง" in reference:
+        text = text.replace("กรุงเทพฯ|พื้นที่|ใกล้เคียง", "กรุงเทพ|จังหวัด|ใกล้เคียง")
+        text = text.replace("กรุงเทพมหานคร|พื้นที่|ใกล้เคียง", "กรุงเทพ|จังหวัด|ใกล้เคียง")
+        text = text.replace("กรุงเทพฯ|จังหวัด|ใกล้เคียง", "กรุงเทพ|จังหวัด|ใกล้เคียง")
+        text = text.replace("กรุงเทพ|พื้นที่|ใกล้เคียง", "กรุงเทพ|จังหวัด|ใกล้เคียง")
 
+    elif "กรุงเทพฯ|พื้นที่|ใกล้เคียง" in reference:
+        text = text.replace("กรุงเทพ|จังหวัด|ใกล้เคียง", "กรุงเทพฯ|พื้นที่|ใกล้เคียง")
+        text = text.replace("กรุงเทพมหานคร|พื้นที่|ใกล้เคียง", "กรุงเทพฯ|พื้นที่|ใกล้เคียง")
     # 2. Wind speed normalization
     wind_directions = [
         "ลมตะวันออกเฉียงเหนือ",
@@ -163,7 +168,7 @@ def main():
         thai_sentence = row.get("thai_sentence", "")
         reference = row.get(REF_COL, "")
         prediction_raw = row.get(PRED_COL, "")
-        prediction_post = postprocess_model_output(prediction_raw)
+        prediction_post = postprocess_model_output(prediction_raw, reference)
 
         before = analyze_wer(reference, prediction_raw)
         after = analyze_wer(reference, prediction_post)
