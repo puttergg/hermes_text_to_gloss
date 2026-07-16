@@ -4,9 +4,7 @@ from pathlib import Path
 import pandas as pd
 from openai import OpenAI
 
-# =========================
-# PATH SETUP
-# =========================
+
 
 BASE_DIR = Path(r"D:\SIIT_Y1\ฝึกงาน summer")
 
@@ -17,11 +15,7 @@ TEST_ROWS = 45
 OUTPUT_FILE = BASE_DIR / f"qwen_hermes_result_{TEST_ROWS}rows_exp006_prompt3.csv"
 FAILED_FILE = BASE_DIR / f"qwen_hermes_failed_{TEST_ROWS}rows_exp006_prompt3.csv"
 
-# =========================
-# HERMES LOCAL API SETUP
-# =========================
-# Flow:
-# Python Code -> Hermes Agent -> Ollama RTT API -> qwen3.5:35b
+
 
 client = OpenAI(
     api_key="local-test-key",
@@ -34,9 +28,7 @@ SOURCE_COL = "source_row"
 THAI_COL = "thai_sentence"
 
 
-# =========================
-# LOAD DATA
-# =========================
+
 
 ref_df = pd.read_csv(REFERENCE_FILE, encoding="utf-8-sig")
 ref_df.columns = [str(c).strip().replace("\ufeff", "") for c in ref_df.columns]
@@ -49,9 +41,7 @@ print("Rows to run:", len(run_df))
 print("Columns:", ref_df.columns.tolist())
 
 
-# =========================
-# PROMPT
-# =========================
+
 
 def build_prompt(sentence: str) -> str:
     return f"""
@@ -108,9 +98,7 @@ def clean_output(text) -> str:
     return "|".join(parts)
 
 
-# =========================
-# CALL HERMES
-# =========================
+
 
 def call_qwen_through_hermes(sentence: str, max_retries: int = 3) -> str:
     prompt = build_prompt(sentence)
@@ -139,9 +127,7 @@ def call_qwen_through_hermes(sentence: str, max_retries: int = 3) -> str:
     return ""
 
 
-# =========================
-# RESUME MODE
-# =========================
+
 
 if OUTPUT_FILE.exists():
     old_df = pd.read_csv(OUTPUT_FILE, encoding="utf-8-sig")
@@ -155,9 +141,7 @@ else:
 failed_rows = []
 
 
-# =========================
-# RUN LOOP
-# =========================
+
 
 for i, row in run_df.iterrows():
     source_row = str(row[SOURCE_COL]).strip()
