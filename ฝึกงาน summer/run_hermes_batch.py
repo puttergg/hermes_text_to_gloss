@@ -5,9 +5,6 @@ from pathlib import Path
 import pandas as pd
 from openai import OpenAI
 
-# =========================
-# PATH SETUP
-# =========================
 
 BASE_DIR = Path(r"D:\SIIT_Y1\ฝึกงาน summer")
 
@@ -31,25 +28,18 @@ client = OpenAI(
 MODEL = "hermes-agent"
 
 
-# =========================
-# COLUMN NAMES
-# =========================
+
 
 THAI_COL = "thai_sentence"
 REF_COL = "gloss_reference"
 
 
-# =========================
-# TEST LIMITS
-# =========================
+
 
 MAX_TEST_ROWS = 30
 MAX_ATTEMPTS = 30
 
 
-# =========================
-# PROMPT RULES
-# =========================
 
 SYSTEM_PROMPT = """
 คุณคือ Thai Weather Forecast to Thai Sign Language Gloss Converter
