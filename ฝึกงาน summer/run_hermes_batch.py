@@ -11,11 +11,11 @@ from openai import OpenAI
 
 BASE_DIR = Path(r"D:\SIIT_Y1\ฝึกงาน summer")
 
-INPUT_FILE = BASE_DIR / "clean_no_conflictv2.csv"
+INPUT_FILE = BASE_DIR / "clean_no_conflict_v3.csv"
 FEWSHOT_CSV = BASE_DIR / "fewshot_20.csv"
 
-OUTPUT_FILE = BASE_DIR / "groq_result_30rows.csv"
-FAILED_FILE = BASE_DIR / "groq_failed_rows_30rows.csv"
+OUTPUT_FILE = BASE_DIR / "groq_result_indirect_hermes.csv"
+FAILED_FILE = BASE_DIR / "groq_failed_rows_indirect_hermes.csv"
 
 
 api_key = os.environ.get("GROQ_API_KEY")
@@ -24,9 +24,11 @@ if not api_key:
     raise ValueError("GROQ_API_KEY is not set. Set it in PowerShell first.")
 
 client = OpenAI(
-    api_key=api_key,
-    base_url="https://api.groq.com/openai/v1",
+    api_key="local-test-key",
+    base_url="http://127.0.0.1:8642/v1",
 )
+
+MODEL = "hermes-agent"
 
 
 # =========================
@@ -42,7 +44,7 @@ REF_COL = "gloss_reference"
 # =========================
 
 MAX_TEST_ROWS = 30
-MAX_ATTEMPTS = 35
+MAX_ATTEMPTS = 30
 
 
 # =========================
@@ -128,39 +130,53 @@ def clean_hermes_output(text) -> str:
 fewshot_examples = load_fewshot_examples(limit=3)
 
 
-def call_hermes(sentence: str, max_retries=5) -> str:
-    full_prompt = f"""
-{SYSTEM_PROMPT}
+def call_hermes(sentence: str, max_retries: int = 5) -> str:
+    user_prompt = f"""
+Study the following examples only to understand the gloss style.
 
-Few-shot examples:
+<FEW_SHOT_EXAMPLES>
 {fewshot_examples}
+</FEW_SHOT_EXAMPLES>
 
-Task:
-Convert the following Thai weather forecast sentence into Thai Sign Language gloss.
+Important:
+- The numbers in the examples belong only to those examples.
+- Use only the numbers from the CURRENT INPUT below.
+- Rules in the current task override any conflicting format in the examples.
 
-STRICT OUTPUT RULES:
-- Output only gloss tokens.
-- Use | as separator.
-- Do not use Thai connector words such as กับ, และ, โดย, ของพื้นที่.
-- Do not summarize.
-- Do not stop early.
-- Convert number ranges like 25-27 into 25|ถึง|27.
-- Convert กม./ชม. into กิโลเมตร|ชั่วโมง.
-- The output must include all weather components from the input.
-
-Input:
+<CURRENT_INPUT>
 {sentence}
+</CURRENT_INPUT>
 
-Output:
+Convert CURRENT_INPUT into Thai Sign Language gloss.
+
+Return exactly one pipe-separated line.
+Do not include "Output:", explanations, reasoning, or any English text.
 """.strip()
+
+    payload = {
+        "model": "hermes-agent",
+        "messages": [
+            {
+                "role": "system",
+                "content": SYSTEM_PROMPT,
+            },
+            {
+                "role": "user",
+                "content": user_prompt,
+            },
+        ],
+        "temperature": 0,
+        "max_tokens": 400,
+    }
+
 
     for attempt in range(max_retries):
         try:
             response = client.chat.completions.create(
-                model="llama-3.3-70b-versatile",
+                model=MODEL,
                 messages=[
                     {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": full_prompt},
+                    {"role": "user", "content": user_prompt},
                 ],
                 temperature=0,
                  max_tokens=1200,
