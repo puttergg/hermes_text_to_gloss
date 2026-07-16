@@ -15,7 +15,7 @@ OUTPUT_CHECK = OUT_DIR / "check_exp007_v3_100rows.csv"
 
 SOURCE_COL = "source_row"
 REF_COL = "gloss_reference"
-PRED_COL = "hermes_output"   # change this if your Groq file uses another column name
+PRED_COL = "hermes_output"  
 
 
 def clean_text(x):
